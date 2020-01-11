@@ -1,0 +1,18 @@
+data:
+  path : "typo your path"
+  batch: 32
+
+net:
+  deeplab:
+    pretrained: False
+    resnet: "res103"
+    head_in_ch: 2048
+    num_classes: 21
+  pointhead:
+    in_c: 533
+    num_classes: 21
+    k: 3
+    beta: 0.75
+
+run:
+  epochs: 100
