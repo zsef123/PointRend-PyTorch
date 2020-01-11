@@ -18,7 +18,7 @@ Implemented only Training codes not tested.
 
 ## Reproduce Fig 5.
 
-Sampled Points showing on A Dog image from different strategies.
+Sampled Points showing from different strategies on A Dog image.
 
 See [sample_semantic.ipynb](tests/sample_semantic.ipynb)
 
@@ -29,6 +29,7 @@ See [sample_semantic.ipynb](tests/sample_semantic.ipynb)
 
 
 Original Figure
+
 ![fig5](imgs/fig5.png)
 
 Reference : [Pytorch Deeplab Tutorial](https://pytorch.org/hub/pytorch_vision_deeplabv3_resnet101/)
