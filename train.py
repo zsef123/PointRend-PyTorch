@@ -22,20 +22,28 @@ def step(epoch, loader, net, optim):
     loss_sum = 0
     for i, (x, gt) in enumerate(loader):
         x = x.to(device, non_blocking=True)
-        gt = gt.squeeze(1).long().to(device, non_blocking=True)
+        gt = gt.squeeze(1).to(device, dtype=torch.long, non_blocking=True)
 
         result = net(x)
 
         pred = F.interpolate(result["coarse"], x.shape[-2:], mode="bilinear", align_corners=True)
         seg_loss = F.cross_entropy(pred, gt)
 
-        gt_points = torch.gather(gt.view(gt.shape[0], -1), 1, result["points"])
+        H, W = result["coarse"].shape[-2:]
+        stride = (x.shape[-2] // H, x.shape[-1] // W)
+
+        ys = (result["points"] // W) * stride[0]
+        xs = (result["points"] % W)  * stride[1]
+
+        gt_points = ((ys * W * stride[1]) + xs).to(device, dtype=torch.long)
+
+        gt_points = torch.gather(gt.view(gt.shape[0], -1), 1, gt_points)
         points_loss = F.cross_entropy(result["rend"], gt_points)
 
         loss = seg_loss + points_loss
 
         if (i % 10) == 0:
-            logging.info(f"[Train] Epoch[{epoch:04d}] loss : {loss.item():.5f} seg : {seg_loss.item():.5f} points : {points_loss.item():.5f}")
+            logging.info(f"[Train] Epoch[{epoch:04d}:{i:03d}/{len(loader):03d}] loss : {loss.item():.5f} seg : {seg_loss.item():.5f} points : {points_loss.item():.5f}")
 
         optim.zero_grad()
         loss.backward()
