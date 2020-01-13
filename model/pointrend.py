@@ -61,7 +61,7 @@ class PointRend(nn.Module):
 
 if __name__ == "__main__":
     x = torch.randn(3, 3, 256, 512).cuda()
-    from backbone import deeplabv3
+    from deeplab import deeplabv3
     net = PointRend(deeplabv3(False), PointHead()).cuda()
     out = net(x)
     for k, v in out.items():
