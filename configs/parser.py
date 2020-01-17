@@ -57,8 +57,7 @@ class Parser:
             assert isinstance(args, argparse.Namespace), "Check args"
 
         path = f"{os.getcwd()}/{path}"
-        base = path.split("/")[-1].split(".")[0]
-        default_path = path.replace(base, "default")
+        default_path = f"{os.getcwd()}/configs/default.yaml"
         self.init_yaml(default_path)
         self.update_yaml(path)
 

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import sampling_points
+from . import sampling_points, infer_sampling_points
 
 
 class PointHead(nn.Module):
@@ -21,6 +21,9 @@ class PointHead(nn.Module):
            we use the same strategy during training and inference: the difference between the most
            confident and second most confident class probabilities.
         """
+        if not self.training:
+            return self.inference(x, res2, out)
+
         B = x.shape[0]
 
         stride = x.shape[-1] // out.shape[-1]
@@ -40,11 +43,38 @@ class PointHead(nn.Module):
 
         rend = self.mlp(feature_representation)
 
-        # TODO : Check line
-        # I assumes if changed coarse, then changed out too
-        coarse = rend
-
         return {"rend": rend, "points": points}
+
+    @torch.no_grad()
+    def inference(self, x, res2, out):
+        B, *_, W = x.shape
+
+        while out.shape[-1] != x.shape[-1]:
+            stride = x.shape[-1] // out.shape[-1]
+            N = out.shape[-2] * out.shape[-1]
+            out = F.interpolate(out, scale_factor=2, mode="bilinear", align_corners=True)
+
+            points = sampling_points(out, training=False, N=4048)
+
+            C = out.shape[1]
+            coarse = torch.gather(out.view(B, C, -1), 2,
+                                  points.unsqueeze(1).expand(-1, C, -1))
+
+            C = res2.shape[1]
+            fine = torch.gather(res2.view(B, C, -1), 2,
+                                points.unsqueeze(1).expand(-1, C, -1))
+            feature_representation = torch.cat([coarse, fine], dim=1)
+
+            rend = self.mlp(feature_representation)
+
+            # TODO : Bottleneck
+            W = out.shape[-1]
+            ys, xs = points // W, points % W
+            for b in range(B):
+                for i, (yy, xx) in enumerate(zip(ys[b], xs[b])):
+                    out[b, :, yy, xx] = rend[b, :, i]
+
+        return {"fine": out}
 
 
 class PointRend(nn.Module):
