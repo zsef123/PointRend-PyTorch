@@ -30,13 +30,14 @@ def sampling_points(mask, k=3, beta=0.75, training=True, N=-1):
         beta = 1
 
     over_generation = torch.randint(N, (B, k * N), dtype=torch.long, device=device)
+    if not training:
+        return over_generation
+
     over_generation_map = torch.gather(uncertainty_map.view(B, N), 1, over_generation).view(B, -1)
 
     # most uncertain βN points
     _, idx = over_generation_map.topk(int(beta * N))
     importance = torch.gather(over_generation, 1, idx)
-    if not training:
-        return importance
 
     coverage = torch.randint(N, (B, int((1 - beta) * N)), dtype=torch.long, device=device)
     return torch.cat([importance, coverage], dim=1).to(device=mask.device)

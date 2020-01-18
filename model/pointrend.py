@@ -47,8 +47,6 @@ class PointHead(nn.Module):
 
     @torch.no_grad()
     def inference(self, x, res2, out):
-        B, *_, W = x.shape
-
         while out.shape[-1] != x.shape[-1]:
             stride = x.shape[-1] // out.shape[-1]
             N = out.shape[-2] * out.shape[-1]
@@ -67,12 +65,10 @@ class PointHead(nn.Module):
 
             rend = self.mlp(feature_representation)
 
-            # TODO : Bottleneck
-            W = out.shape[-1]
-            ys, xs = points // W, points % W
-            for b in range(B):
-                for i, (yy, xx) in enumerate(zip(ys[b], xs[b])):
-                    out[b, :, yy, xx] = rend[b, :, i]
+            # From Issues #5
+            B, C, H, W = out.shape
+            out = out.view(B, C, -1).scatter_(2, points.unsqueeze(1).expand(-1, C, -1), rend)
+            out = out.reshape((B, C, H, W))
 
         return {"fine": out}
 
