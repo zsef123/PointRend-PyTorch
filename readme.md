@@ -12,8 +12,6 @@ This repo for Only Semantic Segmentation on the PascalVOC dataset.
 
 Many details differ from the paper for feasibilty check.
 
-Implemented only Training codes not tested.
-
 <hr>
 
 ## Reproduce Fig 5.
