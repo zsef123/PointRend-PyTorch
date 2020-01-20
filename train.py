@@ -1,8 +1,3 @@
-"""
-TODO:
-1. Multi Batch Task
-2. Check Points alright
-"""
 import os
 import sys
 import argparse
@@ -11,6 +6,7 @@ from configs.parser import Parser
 
 from model import deeplabv3, PointHead, PointRend
 from loader import get_loader
+from infer import infer
 
 import torch
 import torch.nn as nn
@@ -52,12 +48,13 @@ def step(epoch, loader, net, optim):
     return loss_sum / len(loader)
 
 
-def train(C, save_dir, device, loader, net, optim):
+def train(C, save_dir, device, loader, val_loader, net, optim):
     for e in range(C.epochs):
         loss = step(e, loader, net, optim)
         if (e % 10) == 0:
             torch.save(net.state_dict(),
                        f"{save_dir}/epoch_{e:04d}_loss_{loss:.5f}.pth")
+        infer(device, val_loader, net)
 
 
 def parse_args():
@@ -91,7 +88,8 @@ if __name__ == "__main__":
     parser.dump(f"{save_dir}/config.yaml")
 
     device = torch.device("cuda")
-    loader = get_loader(**C.data)
+    train_loader = get_loader(C.data, "train")
+    valid_loader = get_loader(C.data, "val")
 
     pointrend = PointRend(
         deeplabv3(**C.net.deeplab),
@@ -103,4 +101,4 @@ if __name__ == "__main__":
     loss_fn = nn.CrossEntropyLoss()
     optim = torch.optim.AdamW(pointrend.parameters())
 
-    train(C.run, save_dir, device, loader, pointrend, optim)
+    train(C.run, save_dir, device, train_loader, valid_loader, pointrend, optim)

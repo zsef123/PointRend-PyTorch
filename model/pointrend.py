@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import sampling_points, infer_sampling_points
+from . import sampling_points
 
 
 class PointHead(nn.Module):
