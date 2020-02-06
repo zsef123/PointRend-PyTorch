@@ -4,7 +4,7 @@ A PyTorch implementation of `PointRend: Image Segmentation as Rendering`
 
 ![title](imgs/title.png)
 
-### [[arxiv]](https://arxiv.org/pdf/1912.08193.pdf) [Official Repo] : Detectron2 (unopend now)
+### [[arxiv]](https://arxiv.org/pdf/1912.08193.pdf) [[Official Implementation: Detectron2]](https://github.com/facebookresearch/detectron2/tree/master/projects/PointRend)
 
 <hr>
 
