@@ -3,13 +3,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import sampling_points
+from . import sampling_points, point_sample
 
 
 class PointHead(nn.Module):
-    def __init__(self, in_c=533, num_classes=21, k=3, beta=0.75):
+    def __init__(self, in_c=532, num_classes=21, k=3, beta=0.75):
         super().__init__()
-        self.mlp = nn.Conv1d(533, 21, 1)
+        self.mlp = nn.Conv1d(in_c, num_classes, 1)
         self.k = k
         self.beta = beta
 
@@ -24,20 +24,10 @@ class PointHead(nn.Module):
         if not self.training:
             return self.inference(x, res2, out)
 
-        B = x.shape[0]
+        points = sampling_points(out, x.shape[-1] // 16, self.k, self.beta)
 
-        stride = x.shape[-1] // out.shape[-1]
-
-        # Shape :B, num_points, 2
-        points = sampling_points(out, self.k, self.beta)
-
-        C = out.shape[1]
-        coarse = torch.gather(out.view(B, C, -1), 2,
-                              points.unsqueeze(1).expand(-1, C, -1))
-
-        C = res2.shape[1]
-        fine = torch.gather(res2.view(B, C, -1), 2,
-                            points.unsqueeze(1).expand(-1, C, -1))
+        coarse = point_sample(out, points, align_corners=False)
+        fine = point_sample(res2, points, align_corners=False)
 
         feature_representation = torch.cat([coarse, fine], dim=1)
 
@@ -47,28 +37,26 @@ class PointHead(nn.Module):
 
     @torch.no_grad()
     def inference(self, x, res2, out):
+        stride = x.shape[-1] // out.shape[-1]
+        num_points = x.shape[-1] // stride
+
         while out.shape[-1] != x.shape[-1]:
-            stride = x.shape[-1] // out.shape[-1]
-            N = out.shape[-2] * out.shape[-1]
             out = F.interpolate(out, scale_factor=2, mode="bilinear", align_corners=True)
 
-            points = sampling_points(out, training=False, N=4048)
+            points_idx, points = sampling_points(out, num_points, training=self.training)
 
-            C = out.shape[1]
-            coarse = torch.gather(out.view(B, C, -1), 2,
-                                  points.unsqueeze(1).expand(-1, C, -1))
+            coarse = point_sample(out, points, align_corners=False)
+            fine = point_sample(res2, points, align_corners=False)
 
-            C = res2.shape[1]
-            fine = torch.gather(res2.view(B, C, -1), 2,
-                                points.unsqueeze(1).expand(-1, C, -1))
             feature_representation = torch.cat([coarse, fine], dim=1)
 
             rend = self.mlp(feature_representation)
 
-            # From Issues #5
             B, C, H, W = out.shape
-            out = out.view(B, C, -1).scatter_(2, points.unsqueeze(1).expand(-1, C, -1), rend)
-            out = out.reshape((B, C, H, W))
+            points_idx = points_idx.unsqueeze(1).expand(-1, C, -1)
+            out = out.reshape(B, C, -1)
+            out = out.scatter_(2, points_idx, rend)
+            out = out.view(B, C, H, W)
 
         return {"fine": out}
 
@@ -81,8 +69,8 @@ class PointRend(nn.Module):
 
     def forward(self, x):
         result = self.backbone(x)
-        head = self.head(x, result["res2"], result["coarse"])
-        return {**result, **head}
+        result.update(self.head(x, result["res2"], result["coarse"]))
+        return result
 
 
 if __name__ == "__main__":

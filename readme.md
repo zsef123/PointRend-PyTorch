@@ -18,13 +18,7 @@ Many details differ from the paper for feasibilty check.
 
 Sampled Points showing from different strategies on A Dog image.
 
-See [sample_semantic.ipynb](tests/sample_semantic.ipynb)
-
-![result](imgs/sample.png)
-
-
-![dog](imgs/dog.jpg)
-
+See [test_point_sampling.ipynb](tests/test_point_sampling.ipynb)
 
 Original Figure
 
@@ -38,9 +32,18 @@ Reference : [Pytorch Deeplab Tutorial](https://pytorch.org/hub/pytorch_vision_de
 
 First, fix data path in [default.yaml](config/default.yaml)
 
+Multi GPU Training
+See details in `Single GPU Training`
+
 ```
-➜ python3 train.py -h
-usage: train.py [-h] config save
+➜ python3 -m torch.distributed.launch --nproc_per_node={your_gpus} main.py -h
+```
+
+Sinle GPU Training
+
+```
+➜ python3 main.py -h
+usage: main.py [-h] config save
 
 PyTorch Object Detection Training
 
@@ -54,7 +57,7 @@ optional arguments:
 
 e.g.)
 ```
-python3 train.py config/default.yaml test_codes
+python3 main.py config/default.yaml test_codes
 ```
 
 <hr>

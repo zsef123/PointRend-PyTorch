@@ -1,6 +1,12 @@
 .vscode/
 .idea/
 
+cityscapes
+cityscapes/*
+
+voc
+voc/*
+
 outs
 outs/*
 
@@ -9,11 +15,6 @@ outs/*
 *.mat
 *.pyc
 *.ubuntu
-
-##########################
-# Tomocube
-*.tcf
-*.tiff
 
 ##################################################################
 # github python ignore

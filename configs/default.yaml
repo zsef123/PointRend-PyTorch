@@ -1,23 +1,26 @@
 data:
   name: "cityscapes"
   dataset:
-    root: "typo your path"
+    root: "./cityscapes"
     mode: "fine"
     target_type: "semantic"
   loader:
-    batch: 32
+    batch_size: 2
 
 net:
   deeplab:
     pretrained: False
-    resnet: "res103"
+    resnet: "res53"
     head_in_ch: 2048
     num_classes: 20
   pointhead:
-    in_c: 533
+    in_c: 532 # 512 + 20
     num_classes: 20
     k: 3
     beta: 0.75
 
 run:
   epochs: 200
+
+apex:
+  opt: "O0"

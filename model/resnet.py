@@ -30,4 +30,4 @@ def resnet103(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return ResNetXX3(Bottleneck, [3, 4, 6, 3], **kwargs)
+    return ResNetXX3(Bottleneck, [3, 4, 23, 3], **kwargs)

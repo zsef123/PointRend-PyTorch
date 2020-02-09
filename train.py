@@ -1,19 +1,17 @@
-import os
-import sys
-import argparse
 import logging
-from configs.parser import Parser
-
-from model import deeplabv3, PointHead, PointRend
-from loader import get_loader
-from infer import infer
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
+from model import point_sample
 
-def step(epoch, loader, net, optim):
+from infer import infer
+
+from apex import amp
+from utils.gpus import is_main_process, reduce_tensor
+
+
+def step(epoch, loader, net, optim, device):
     net.train()
     loss_sum = 0
     for i, (x, gt) in enumerate(loader):
@@ -25,80 +23,35 @@ def step(epoch, loader, net, optim):
         pred = F.interpolate(result["coarse"], x.shape[-2:], mode="bilinear", align_corners=True)
         seg_loss = F.cross_entropy(pred, gt)
 
-        H, W = result["coarse"].shape[-2:]
-        stride = (x.shape[-2] // H, x.shape[-1] // W)
-
-        ys = (result["points"] // W) * stride[0]
-        xs = (result["points"] % W)  * stride[1]
-
-        gt_points = ((ys * W * stride[1]) + xs).to(device, dtype=torch.long)
-
-        gt_points = torch.gather(gt.view(gt.shape[0], -1), 1, gt_points)
+        gt_points = point_sample(
+            gt.float().unsqueeze(1),
+            result["points"],
+            align_corners=False
+        ).squeeze_(1).long()
         points_loss = F.cross_entropy(result["rend"], gt_points)
 
         loss = seg_loss + points_loss
 
-        if (i % 10) == 0:
-            logging.info(f"[Train] Epoch[{epoch:04d}:{i:03d}/{len(loader):03d}] loss : {loss.item():.5f} seg : {seg_loss.item():.5f} points : {points_loss.item():.5f}")
+        reduce_seg = reduce_tensor(seg_loss)
+        reduce_point = reduce_tensor(points_loss)
+        reduce_loss = reduce_seg + reduce_point
+
+        if is_main_process() and (i % 10) == 0:
+            logging.info(f"[Train] Epoch[{epoch:04d}:{i:03d}/{len(loader):03d}] loss : {reduce_loss.item():.5f} seg : {reduce_seg.item():.5f} points : {reduce_point.item():.5f}")
 
         optim.zero_grad()
-        loss.backward()
+        with amp.scale_loss(loss, optim) as scaled_loss:
+            scaled_loss.backward()
         optim.step()
-        loss_sum += loss.item()
+
+        loss_sum += reduce_loss.item()
     return loss_sum / len(loader)
 
 
-def train(C, save_dir, device, loader, val_loader, net, optim):
+def train(C, save_dir, loader, val_loader, net, optim, device):
     for e in range(C.epochs):
-        loss = step(e, loader, net, optim)
-        if (e % 10) == 0:
+        loss = step(e, loader, net, optim, device)
+        if is_main_process() and (e % 10) == 0:
             torch.save(net.state_dict(),
                        f"{save_dir}/epoch_{e:04d}_loss_{loss:.5f}.pth")
-        infer(device, val_loader, net)
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="PyTorch Object Detection Training")
-    parser.add_argument("config", type=str, help="It must be config/*.yaml")
-    parser.add_argument("save", type=str, help="Save path in out directory")
-
-    return parser.parse_args()
-
-
-def set_loggging(save_dir):
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    log_format = '%(asctime)s %(message)s'
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-                        format=log_format, datefmt='[%y/%m/%d %H:%M:%S]')
-
-    fh = logging.FileHandler(f"{save_dir}/log.txt")
-    fh.setFormatter(logging.Formatter(log_format))
-    logging.getLogger().addHandler(fh)
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    parser = Parser(args.config)
-    C = parser.C
-
-    save_dir = f"{os.getcwd()}/outs/{args.save}"
-    set_loggging(save_dir)
-    parser.dump(f"{save_dir}/config.yaml")
-
-    device = torch.device("cuda")
-    train_loader = get_loader(C.data, "train")
-    valid_loader = get_loader(C.data, "val")
-
-    pointrend = PointRend(
-        deeplabv3(**C.net.deeplab),
-        PointHead(**C.net.pointhead)
-    ).to(device)
-
-    pointrend = nn.DataParallel(pointrend)
-
-    loss_fn = nn.CrossEntropyLoss()
-    optim = torch.optim.AdamW(pointrend.parameters())
-
-    train(C.run, save_dir, device, train_loader, valid_loader, pointrend, optim)
+        infer(val_loader, net, device)
