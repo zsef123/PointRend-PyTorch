@@ -52,11 +52,11 @@ def sampling_points(mask, N, k=3, beta=0.75, training=True):
     assert mask.dim() == 4, "Dim must be N(Batch)CHW"
     device = mask.device
     B, _, H, W = mask.shape
+    mask, _ = mask.sort(1, descending=True)
 
     if not training:
         H_step, W_step = 1 / H, 1 / W
         N = min(H * W, N)
-
         uncertainty_map = -1 * (mask[:, 0] - mask[:, 1])
         _, idx = uncertainty_map.view(B, -1).topk(N, dim=1)
 

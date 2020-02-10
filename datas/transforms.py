@@ -1,5 +1,8 @@
 import random
 
+import numpy as np
+
+import torch
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.transforms.functional import normalize
@@ -10,10 +13,10 @@ class Resize:
         self.shape = [shape, shape] if isinstance(shape, int) else shape
 
     def __call__(self, img, mask):
-        img, mask = img.unsqueeze(0), mask.unsqueeze(0)
+        img, mask = img.unsqueeze(0), mask.unsqueeze(0).float()
         img = F.interpolate(img, size=self.shape, mode="bilinear", align_corners=False)
         mask = F.interpolate(mask, size=self.shape, mode="bilinear", align_corners=False)
-        return img[0], mask[0]
+        return img[0], mask[0].byte()
 
 
 class RandomCrop:
@@ -54,7 +57,9 @@ class ToTensor:
         self.to_tensor = transforms.ToTensor()
 
     def __call__(self, img, mask):
-        return self.to_tensor(img), self.to_tensor(mask)
+        img = self.to_tensor(img)
+        mask = torch.from_numpy(np.array(mask))
+        return img, mask[None]
 
 
 class Normalize:
