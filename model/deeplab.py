@@ -12,7 +12,6 @@ class SmallDeepLab(_SimpleSegmentationModel):
     def forward(self, input_):
         result = self.backbone(input_)
         result["coarse"] = self.classifier(result["out"])
-
         return result
 
 
@@ -27,7 +26,7 @@ def deeplabv3(pretrained=False, resnet="res103", head_in_ch=2048, num_classes=21
             resnet(pretrained=True, replace_stride_with_dilation=[False, True, True]),
             return_layers={'layer2': 'res2', 'layer4': 'out'}
         ),
-        classifier=DeepLabHead(head_in_ch,      num_classes)
+        classifier=DeepLabHead(head_in_ch, num_classes)
     )
     if pretrained:
         state_dict = load_state_dict_from_url('https://download.pytorch.org/models/deeplabv3_resnet101_coco-586e9e4e.pth', progress=True)

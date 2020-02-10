@@ -36,7 +36,7 @@ def step(epoch, loader, net, optim, device):
         reduce_point = reduce_tensor(points_loss)
         reduce_loss = reduce_seg + reduce_point
 
-        if is_main_process() and (i % 10) == 0:
+        if (i % 10) == 0:
             logging.info(f"[Train] Epoch[{epoch:04d}:{i:03d}/{len(loader):03d}] loss : {reduce_loss.item():.5f} seg : {reduce_seg.item():.5f} points : {reduce_point.item():.5f}")
 
         optim.zero_grad()
