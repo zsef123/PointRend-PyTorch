@@ -6,6 +6,7 @@ from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 from torchvision.models.segmentation.deeplabv3 import DeepLabHead
 from torchvision.models.segmentation.fcn import FCNHead
 from .resnet import resnet103, resnet53
+from torchvision.models import resnet50, resnet101
 
 
 class SmallDeepLab(_SimpleSegmentationModel):
@@ -17,8 +18,10 @@ class SmallDeepLab(_SimpleSegmentationModel):
 
 def deeplabv3(pretrained=False, resnet="res103", head_in_ch=2048, num_classes=21):
     resnet = {
-        "res53": resnet53,
-        "res103": resnet103
+        "res53":  resnet53,
+        "res103": resnet103,
+        "res50":  resnet50,
+        "res101": resnet101
     }[resnet]
 
     net = SmallDeepLab(
@@ -28,9 +31,6 @@ def deeplabv3(pretrained=False, resnet="res103", head_in_ch=2048, num_classes=21
         ),
         classifier=DeepLabHead(head_in_ch, num_classes)
     )
-    if pretrained:
-        state_dict = load_state_dict_from_url('https://download.pytorch.org/models/deeplabv3_resnet101_coco-586e9e4e.pth', progress=True)
-        net.load_state_dict(state_dict)
     return net
 
 

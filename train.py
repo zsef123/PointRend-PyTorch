@@ -16,19 +16,20 @@ def step(epoch, loader, net, optim, device):
     loss_sum = 0
     for i, (x, gt) in enumerate(loader):
         x = x.to(device, non_blocking=True)
-        gt = gt.squeeze(1).to(device, dtype=torch.long, non_blocking=True)
+        gt = gt.squeeze_(1).to(device, dtype=torch.long, non_blocking=True)
 
         result = net(x)
 
         pred = F.interpolate(result["coarse"], x.shape[-2:], mode="bilinear", align_corners=True)
-        seg_loss = F.cross_entropy(pred, gt)
+        seg_loss = F.cross_entropy(pred, gt, ignore_index=255)
 
         gt_points = point_sample(
             gt.float().unsqueeze(1),
             result["points"],
+            mode="nearest",
             align_corners=False
         ).squeeze_(1).long()
-        points_loss = F.cross_entropy(result["rend"], gt_points)
+        points_loss = F.cross_entropy(result["rend"], gt_points, ignore_index=255)
 
         loss = seg_loss + points_loss
 

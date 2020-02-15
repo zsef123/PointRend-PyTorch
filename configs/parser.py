@@ -56,10 +56,10 @@ class Parser:
             raise NotImplementedError("Don't use args")
             assert isinstance(args, argparse.Namespace), "Check args"
 
-        path = f"{os.getcwd()}/{path}"
-        default_path = f"{os.getcwd()}/configs/default.yaml"
+        full_path = f"{os.getcwd()}/{path}"
+        default_path = full_path.replace(path, "configs/default.yaml")
         self.init_yaml(default_path)
-        self.update_yaml(path)
+        self.update_yaml(full_path)
 
     def init_yaml(self, path):
         with open(path, 'r') as f:

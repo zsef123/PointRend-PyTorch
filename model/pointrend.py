@@ -37,8 +37,11 @@ class PointHead(nn.Module):
 
     @torch.no_grad()
     def inference(self, x, res2, out):
-        stride = x.shape[-1] // out.shape[-1]
-        num_points = x.shape[-1] // stride
+        """
+        During inference, subdivision uses N=8096
+        (i.e., the number of points in the stride 16 map of a 1024×2048 image)
+        """
+        num_points = 8096
 
         while out.shape[-1] != x.shape[-1]:
             out = F.interpolate(out, scale_factor=2, mode="bilinear", align_corners=True)
@@ -54,9 +57,9 @@ class PointHead(nn.Module):
 
             B, C, H, W = out.shape
             points_idx = points_idx.unsqueeze(1).expand(-1, C, -1)
-            out = out.reshape(B, C, -1)
-            out = out.scatter_(2, points_idx, rend)
-            out = out.view(B, C, H, W)
+            out = (out.reshape(B, C, -1)
+                      .scatter_(2, points_idx, rend)
+                      .view(B, C, H, W))
 
         return {"fine": out}
 

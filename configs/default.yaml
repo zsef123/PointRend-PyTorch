@@ -5,22 +5,28 @@ data:
     mode: "fine"
     target_type: "semantic"
   loader:
-    batch_size: 2
+    batch_size: 6
+    num_workers: 8
 
 net:
   deeplab:
     pretrained: False
-    resnet: "res53"
+    resnet: "res101"
     head_in_ch: 2048
-    num_classes: 34
+    num_classes: 19
   pointhead:
-    in_c: 546 # 512 + num_classes
-    num_classes: 34
+    in_c: 531 # 512 + num_classes
+    num_classes: 19
     k: 3
     beta: 0.75
 
 run:
   epochs: 200
+
+train:
+  lr: 0.01
+  momentum: 0.9
+  weight_decay: 0.0001
 
 apex:
   opt: "O0"

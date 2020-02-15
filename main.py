@@ -75,7 +75,11 @@ if __name__ == "__main__":
         PointHead(**C.net.pointhead)
     ).to(device)
 
-    optim = torch.optim.AdamW(net.parameters())
+    params = [{"params": net.backbone.backbone.parameters(),   "lr": C.train.lr},
+              {"params": net.head.parameters(),                "lr": C.train.lr},
+              {"params": net.backbone.classifier.parameters(), "lr": C.train.lr * 10}]
+
+    optim = torch.optim.SGD(params, momentum=C.train.momentum, weight_decay=C.train.weight_decay)
 
     net, optim = amp.initialize(net, optim, opt_level=C.apex.opt)
     if args.distributed:

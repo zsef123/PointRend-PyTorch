@@ -4,8 +4,8 @@
 cityscapes
 cityscapes/*
 
-voc
-voc/*
+pascalvoc
+pascalvoc/*
 
 outs
 outs/*

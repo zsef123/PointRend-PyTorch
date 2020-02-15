@@ -15,16 +15,21 @@ class Resize:
     def __call__(self, img, mask):
         img, mask = img.unsqueeze(0), mask.unsqueeze(0).float()
         img = F.interpolate(img, size=self.shape, mode="bilinear", align_corners=False)
-        mask = F.interpolate(mask, size=self.shape, mode="bilinear", align_corners=False)
+        mask = F.interpolate(mask, size=self.shape, mode="nearest")
         return img[0], mask[0].byte()
 
 
 class RandomCrop:
     def __init__(self, shape):
         self.shape = [shape, shape] if isinstance(shape, int) else shape
+        self.fill = 0
+        self.padding_mode = 'constant'
 
     def _get_range(self, shape, crop_shape):
-        start = random.randint(0, shape - crop_shape)
+        if shape == crop_shape:
+            start = 0
+        else:
+            start = random.randint(0, shape - crop_shape)
         end = start + crop_shape
         return start, end
 
@@ -79,3 +84,20 @@ class Compose:
         for t in self.transforms:
             img, mask = t(img, mask)
         return img, mask
+
+
+class ConvertMaskID:
+    """
+    Convert 34 classes to 19 classes
+
+    Change the `id` value of CityscapesClass to `train_id`
+    """
+    def __init__(self, classes):
+        self.classes = classes
+
+    def __call__(self, img, mask):
+        mask_train_id = mask.clone()
+        for c in self.classes:
+            mask_train_id[mask == c.id] = c.train_id
+
+        return img, mask_train_id
